@@ -1,15 +1,15 @@
 package api
 
 func NewRouter(
-    tradeHandler *TradeHandler,
+	tradeHandler *TradeHandler,
 ) http.Handler {
 
-    mux := http.NewServeMux()
+	mux := http.NewServeMux()
 
-    mux.HandleFunc(
-        "/api/user/trades",
-        tradeHandler.GetTrades,
-    )
+	mux.HandleFunc(
+		"/api/user/trades",
+		tradeHandler.GetTrades,
+	)
 
-    return mux
+	return mux
 }
