@@ -1,0 +1,44 @@
+package repository
+
+import (
+	"context"
+	"os"
+	"testing"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestPostgresTradeRepository_GetTradesByAccount(t *testing.T) {
+	connStr := os.Getenv("TEST_DATABASE_URL")
+	require.NotEmpty(t, connStr, "TEST_DATABASE_URL must be set")
+
+	ctx := context.Background()
+
+	pool, err := pgxpool.New(ctx, connStr)
+	require.NoError(t, err)
+	defer pool.Close()
+
+	err = pool.Ping(ctx)
+	require.NoError(t, err)
+
+	repo := NewPostgresTradeRepository(pool)
+
+	// Choose an account that exists in your test database.
+	accountID := 1234
+
+	trades, err := repo.GetTradesByAccount(ctx, accountID)
+
+	require.NoError(t, err)
+
+	// We expect at least one trade for this account.
+	assert.NotEmpty(t, trades)
+
+	// Verify every returned trade belongs to the account.
+	for _, trade := range trades {
+		assert.Equal(t, accountID, trade.AccountId)
+		assert.NotZero(t, trade.Id)
+		assert.NotEmpty(t, trade.ContractId)
+	}
+}

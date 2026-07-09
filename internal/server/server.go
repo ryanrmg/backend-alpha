@@ -36,7 +36,7 @@ func New(
 	router := api.NewRouter(handler)
 
 	httpServer := &http.Server{
-		Addr:         cfg.Port,
+		Addr:         ":" + cfg.Port,
 		Handler:      router,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,

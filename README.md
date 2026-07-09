@@ -184,3 +184,23 @@ PostgreSQL
 - OpenTelemetry tracing
 - Docker support
 - CI/CD pipeline
+
+
+## Postgres Things
+
+Log in as root user
+
+```bash
+sudo -u postgres psql
+
+list
+\l
+
+
+```
+
+Log into a specific database
+
+```bash
+psql -U trading_user -d trading_db -h localhost
+```
