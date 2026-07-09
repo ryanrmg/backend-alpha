@@ -40,6 +40,13 @@ func (store *DBStore) CreateUserTradeTable(ctx context.Context) error {
 	return err
 }
 
+// deletes the user table if it exists
+func (store *DBStore) DeleteUserTable(ctx context.Context) error {
+	query := `DROP TABLE IF EXISTS user_trades;`
+	_, err := store.pool.Exec(ctx, query)
+	return err
+}
+
 // SaveUserTrade inserts a cleanly structured trade into the DB
 func (store *DBStore) SaveUserTrade(ctx context.Context, trade projectx.GatewayUserTrade) error {
 	query := `

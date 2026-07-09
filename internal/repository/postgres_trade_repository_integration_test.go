@@ -6,9 +6,32 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	projectx "github.com/ryanrmg/projectx-api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestDeleteCreateTable(t *testing.T) {
+	connStr := os.Getenv("TEST_DATABASE_URL")
+	require.NotEmpty(t, connStr, "TEST_DATABASE_URL must be set")
+
+	ctx := context.Background()
+
+	pool, err := pgxpool.New(ctx, connStr)
+	require.NoError(t, err)
+	defer pool.Close()
+
+	err = pool.Ping(ctx)
+	require.NoError(t, err)
+
+	repo := NewPostgresTradeRepository(pool)
+
+	err = repo.CreateUserTradeTable(ctx)
+	require.NoError(t, err)
+
+	err = repo.DeleteUserTable(ctx)
+	require.NoError(t, err)
+}
 
 func TestPostgresTradeRepository_GetTradesByAccount(t *testing.T) {
 	connStr := os.Getenv("TEST_DATABASE_URL")
@@ -24,6 +47,26 @@ func TestPostgresTradeRepository_GetTradesByAccount(t *testing.T) {
 	require.NoError(t, err)
 
 	repo := NewPostgresTradeRepository(pool)
+
+	err = repo.CreateUserTradeTable(ctx)
+	require.NoError(t, err)
+
+	trade := projectx.GatewayUserTrade{
+		Id:                1,
+		AccountId:         1234,
+		ContractId:        "CON.F.US.MES.U26",
+		CreationTimestamp: "2026-07-07T14:45:00Z",
+		Price:             6321.75,
+		ProfitAndLoss:     -42.75,
+		Fees:              2.04,
+		Side:              2,
+		Size:              1,
+		Voided:            false,
+		OrderId:           1002,
+	}
+
+	err = repo.SaveUserTrade(ctx, trade)
+	require.NoError(t, err)
 
 	// Choose an account that exists in your test database.
 	accountID := 1234
@@ -41,4 +84,7 @@ func TestPostgresTradeRepository_GetTradesByAccount(t *testing.T) {
 		assert.NotZero(t, trade.Id)
 		assert.NotEmpty(t, trade.ContractId)
 	}
+
+	err = repo.DeleteUserTable(ctx)
+	require.NoError(t, err)
 }
