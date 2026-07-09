@@ -1,5 +1,9 @@
 package api
 
+import (
+	"net/http"
+)
+
 func NewRouter(
 	tradeHandler *TradeHandler,
 ) http.Handler {

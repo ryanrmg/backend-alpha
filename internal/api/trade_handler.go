@@ -1,5 +1,12 @@
 package api
 
+import (
+	"encoding/json"
+	"github.com/ryanrmg/backend-alpha/internal/service"
+	"net/http"
+	"strconv"
+)
+
 type TradeHandler struct {
 	service *service.TradeService
 }

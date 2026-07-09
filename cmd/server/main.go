@@ -1,5 +1,15 @@
 package main
 
+import (
+	"context"
+	"log"
+	"net/http"
+	"time"
+
+	"github.com/ryanrmg/backend-alpha/internal/config"
+	"github.com/ryanrmg/backend-alpha/internal/server"
+)
+
 func main() {
 
 	ctx := context.Background()
@@ -11,7 +21,7 @@ func main() {
 	}
 
 	go func() {
-		<-interruptSignal()
+		<-ctx.Done()
 
 		shutdownCtx, cancel := context.WithTimeout(
 			context.Background(),

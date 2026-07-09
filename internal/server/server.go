@@ -1,5 +1,16 @@
 package server
 
+import (
+	"context"
+	"net/http"
+	"time"
+
+	"github.com/ryanrmg/backend-alpha/internal/api"
+	config "github.com/ryanrmg/backend-alpha/internal/config"
+	"github.com/ryanrmg/backend-alpha/internal/repository"
+	"github.com/ryanrmg/backend-alpha/internal/service"
+)
+
 type Server struct {
 	http *http.Server
 	db   *repository.Database
@@ -7,7 +18,7 @@ type Server struct {
 
 func New(
 	ctx context.Context,
-	cfg Config,
+	cfg config.Config,
 ) (*Server, error) {
 
 	db, err := repository.NewDatabase(
@@ -20,11 +31,8 @@ func New(
 	}
 
 	repo := repository.NewPostgresTradeRepository(db.Pool)
-
 	service := service.NewTradeService(repo)
-
 	handler := api.NewTradeHandler(service)
-
 	router := api.NewRouter(handler)
 
 	httpServer := &http.Server{
