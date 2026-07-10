@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log"
 	"encoding/json"
 	"github.com/ryanrmg/backend-alpha/internal/service"
 	"net/http"
@@ -25,6 +26,11 @@ func (h *TradeHandler) GetTrades(
 	r *http.Request,
 ) {
 
+	log.Printf("Received %s %s from %s",
+		r.Method,
+		r.URL.String(),
+		r.RemoteAddr,
+	)
 	accountID, err := strconv.Atoi(
 		r.URL.Query().Get("accountId"),
 	)

@@ -51,7 +51,7 @@ func TestPostgresTradeRepository_GetTradesByAccount(t *testing.T) {
 	err = repo.CreateUserTradeTable(ctx)
 	require.NoError(t, err)
 
-	trade := projectx.GatewayUserTrade{
+	testTrade := projectx.GatewayUserTrade{
 		Id:                1,
 		AccountId:         1234,
 		ContractId:        "CON.F.US.MES.U26",
@@ -65,7 +65,7 @@ func TestPostgresTradeRepository_GetTradesByAccount(t *testing.T) {
 		OrderId:           1002,
 	}
 
-	err = repo.SaveUserTrade(ctx, trade)
+	err = repo.SaveUserTrade(ctx, testTrade)
 	require.NoError(t, err)
 
 	// Choose an account that exists in your test database.
@@ -81,6 +81,7 @@ func TestPostgresTradeRepository_GetTradesByAccount(t *testing.T) {
 	// Verify every returned trade belongs to the account.
 	for _, trade := range trades {
 		assert.Equal(t, accountID, trade.AccountId)
+		assert.Equal(t, testTrade.Price, trade.Price)
 		assert.NotZero(t, trade.Id)
 		assert.NotEmpty(t, trade.ContractId)
 	}
