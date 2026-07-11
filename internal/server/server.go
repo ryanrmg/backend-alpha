@@ -9,6 +9,7 @@ import (
 	config "github.com/ryanrmg/backend-alpha/internal/config"
 	"github.com/ryanrmg/backend-alpha/internal/repository"
 	"github.com/ryanrmg/backend-alpha/internal/service"
+	projectx "github.com/ryanrmg/projectx-api"
 )
 
 type Server struct {
@@ -30,10 +31,20 @@ func New(
 		return nil, err
 	}
 
+	client := projectx.NewProjectXClient(
+		cfg.ProjectXHttps,
+		cfg.ProjectXSocket,
+		cfg.ProjectXUsername,
+		cfg.ProjectXApiKey,
+	)
+
 	repo := repository.NewPostgresTradeRepository(db.Pool)
-	service := service.NewTradeService(repo)
-	handler := api.NewTradeHandler(service)
-	router := api.NewRouter(handler)
+	tradeService := service.NewTradeService(repo)
+	accountService := service.NewAccountService(client)
+
+	tradeHandler := api.NewTradeHandler(tradeService)
+	accountHandler := api.NewAccountHandler(accountService)
+	router := api.NewRouter(tradeHandler, accountHandler)
 
 	httpServer := &http.Server{
 		Addr:         ":" + cfg.Port,

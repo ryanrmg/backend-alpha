@@ -6,6 +6,7 @@ import (
 
 func NewRouter(
 	tradeHandler *TradeHandler,
+	accountHandler *AccountHandler,
 ) http.Handler {
 
 	mux := http.NewServeMux()
@@ -13,6 +14,11 @@ func NewRouter(
 	mux.HandleFunc(
 		"/api/user/trades",
 		tradeHandler.GetTrades,
+	)
+
+	mux.HandleFunc(
+		"api/user/accounts",
+		accountHandler.GetAccounts,
 	)
 
 	return mux
