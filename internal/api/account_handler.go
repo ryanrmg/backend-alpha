@@ -35,6 +35,8 @@ func (h *AccountHandler) GetAccounts(
 		r.Context(),
 	)
 
+	log.Println(accounts)
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

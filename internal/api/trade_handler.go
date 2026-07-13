@@ -1,9 +1,9 @@
 package api
 
 import (
-	"log"
 	"encoding/json"
 	"github.com/ryanrmg/backend-alpha/internal/service"
+	"log"
 	"net/http"
 	"strconv"
 )
@@ -50,7 +50,7 @@ func (h *TradeHandler) GetTrades(
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	// w.Header().Set("Content-Type", "application/json")
 
 	json.NewEncoder(w).Encode(trades)
 }

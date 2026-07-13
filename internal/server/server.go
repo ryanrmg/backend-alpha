@@ -17,6 +17,21 @@ type Server struct {
 	db   *repository.Database
 }
 
+func cors(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func New(
 	ctx context.Context,
 	cfg config.Config,
@@ -48,7 +63,7 @@ func New(
 
 	httpServer := &http.Server{
 		Addr:         ":" + cfg.Port,
-		Handler:      router,
+		Handler:      cors(router),
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,

@@ -17,7 +17,7 @@ func NewRouter(
 	)
 
 	mux.HandleFunc(
-		"api/user/accounts",
+		"/api/user/accounts",
 		accountHandler.GetAccounts,
 	)
 
