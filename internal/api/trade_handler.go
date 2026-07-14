@@ -31,7 +31,7 @@ func (h *TradeHandler) GetTrades(
 		r.URL.String(),
 		r.RemoteAddr,
 	)
-	accountID, err := strconv.Atoi(
+	accountId, err := strconv.Atoi(
 		r.URL.Query().Get("accountId"),
 	)
 
@@ -40,9 +40,15 @@ func (h *TradeHandler) GetTrades(
 		return
 	}
 
+	log.Printf("Attempting to fetch trades from remote")
+	err = h.service.FetchTrades(r.Context(), accountId)
+	if err != nil {
+		log.Printf("Failed to get trades from remote", err)
+	}
+
 	trades, err := h.service.GetTrades(
 		r.Context(),
-		accountID,
+		accountId,
 	)
 
 	if err != nil {

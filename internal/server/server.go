@@ -54,7 +54,7 @@ func New(
 	)
 
 	repo := repository.NewPostgresTradeRepository(db.Pool)
-	tradeService := service.NewTradeService(repo)
+	tradeService := service.NewTradeService(repo, client)
 	accountService := service.NewAccountService(client)
 
 	tradeHandler := api.NewTradeHandler(tradeService)

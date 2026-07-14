@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	projectx "github.com/ryanrmg/projectx-api"
@@ -22,10 +23,10 @@ func NewPostgresTradeRepository(
 
 func (r *PostgresTradeRepository) GetTradesByAccount(
 	ctx context.Context,
-	accountID int,
+	accountId int,
 ) ([]projectx.GatewayUserTrade, error) {
 
-	return r.store.GetTradesByAccount(ctx, accountID)
+	return r.store.GetTradesByAccount(ctx, accountId)
 }
 
 func (r *PostgresTradeRepository) SaveUserTrade(
@@ -48,4 +49,10 @@ func (r *PostgresTradeRepository) DeleteUserTable(
 ) error {
 
 	return r.store.DeleteUserTable(ctx)
+}
+
+func (r *PostgresTradeRepository) GetLatestTradeTimestamp(
+	ctx context.Context,
+) (time.Time, error) {
+	return r.store.GetLatestTradeTimestamp(ctx)
 }

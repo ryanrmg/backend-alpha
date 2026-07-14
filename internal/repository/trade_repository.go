@@ -1,14 +1,24 @@
 package repository
 
 import (
-    "context"
+	"context"
+	"time"
 
-    projectx "github.com/ryanrmg/projectx-api"
+	projectx "github.com/ryanrmg/projectx-api"
 )
 
 type TradeRepository interface {
-    GetTradesByAccount(
-        ctx context.Context,
-        accountID int,
-    ) ([]projectx.GatewayUserTrade, error)
+	GetTradesByAccount(
+		ctx context.Context,
+		accountId int,
+	) ([]projectx.GatewayUserTrade, error)
+
+	GetLatestTradeTimestamp(
+		ctx context.Context,
+	) (time.Time, error)
+
+	SaveUserTrade(
+		ctx context.Context,
+		trade projectx.GatewayUserTrade,
+	) error
 }

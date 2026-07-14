@@ -2,11 +2,13 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/ryanrmg/projectx-api"
+	projectx "github.com/ryanrmg/projectx-api"
 )
 
 // DBStore handles all database interactions
@@ -114,7 +116,7 @@ func (store *DBStore) GetLatestResponse(ctx context.Context, endpoint string) (s
 }
 
 // GetTradesByAccount retrieves all stored trades for a specific account ID ordered by newest first
-func (store *DBStore) GetTradesByAccount(ctx context.Context, accountID int) ([]projectx.GatewayUserTrade, error) {
+func (store *DBStore) GetTradesByAccount(ctx context.Context, accountId int) ([]projectx.GatewayUserTrade, error) {
 	// 1. Write the SQL query
 	query := `
 		SELECT
@@ -126,7 +128,7 @@ func (store *DBStore) GetTradesByAccount(ctx context.Context, accountID int) ([]
 	`
 
 	// 2. Execute the query
-	rows, err := store.pool.Query(ctx, query, accountID)
+	rows, err := store.pool.Query(ctx, query, accountId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query: %w", err)
 	}
@@ -179,4 +181,32 @@ func (store *DBStore) GetTradesByAccount(ctx context.Context, accountID int) ([]
 	}
 
 	return trades, nil
+}
+
+// GetLatestTradeTimestamp returns the newest trade timestamp in the database.
+// If there are no trades, it returns time.Time{} and nil.
+func (store *DBStore) GetLatestTradeTimestamp(
+	ctx context.Context,
+) (time.Time, error) {
+	query := `
+		SELECT MAX(creation_timestamp)
+		FROM user_trades;
+	`
+
+	var latest *time.Time
+
+	err := store.pool.QueryRow(ctx, query).Scan(&latest)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return time.Time{}, nil
+		}
+		return time.Time{}, fmt.Errorf("failed to get latest trade timestamp: %w", err)
+	}
+
+	if latest == nil {
+		// Table exists but contains no rows.
+		return time.Time{}, nil
+	}
+
+	return *latest, nil
 }
