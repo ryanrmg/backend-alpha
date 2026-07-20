@@ -26,10 +26,13 @@ func TestDeleteCreateTable(t *testing.T) {
 
 	repo := NewPostgresTradeRepository(pool)
 
-	err = repo.CreateUserTradeTable(ctx)
+	err = repo.DeleteUserFillsTable(ctx)
 	require.NoError(t, err)
 
-	err = repo.DeleteUserTable(ctx)
+	err = repo.CreateUserFillsTable(ctx)
+	require.NoError(t, err)
+
+	err = repo.DeleteUserFillsTable(ctx)
 	require.NoError(t, err)
 }
 
@@ -48,7 +51,7 @@ func TestPostgresTradeRepository_GetTradesByAccount(t *testing.T) {
 
 	repo := NewPostgresTradeRepository(pool)
 
-	err = repo.CreateUserTradeTable(ctx)
+	err = repo.CreateUserFillsTable(ctx)
 	require.NoError(t, err)
 
 	testTrade := projectx.GatewayUserTrade{
@@ -65,7 +68,7 @@ func TestPostgresTradeRepository_GetTradesByAccount(t *testing.T) {
 		OrderId:           1002,
 	}
 
-	err = repo.SaveUserTrade(ctx, testTrade)
+	err = repo.SaveUserFill(ctx, testTrade)
 	require.NoError(t, err)
 
 	// Choose an account that exists in your test database.
@@ -86,6 +89,6 @@ func TestPostgresTradeRepository_GetTradesByAccount(t *testing.T) {
 		assert.NotEmpty(t, trade.ContractId)
 	}
 
-	err = repo.DeleteUserTable(ctx)
+	err = repo.DeleteUserFillsTable(ctx)
 	require.NoError(t, err)
 }

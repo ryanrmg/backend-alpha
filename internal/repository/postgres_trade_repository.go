@@ -29,30 +29,30 @@ func (r *PostgresTradeRepository) GetTradesByAccount(
 	return r.store.GetTradesByAccount(ctx, accountId)
 }
 
-func (r *PostgresTradeRepository) SaveUserTrade(
+func (r *PostgresTradeRepository) SaveUserFill(
 	ctx context.Context,
 	trade projectx.GatewayUserTrade,
 ) error {
 
-	return r.store.SaveUserTrade(ctx, trade)
+	return r.store.SaveUserFill(ctx, trade)
 }
 
-func (r *PostgresTradeRepository) CreateUserTradeTable(
+func (r *PostgresTradeRepository) CreateUserFillsTable(
 	ctx context.Context,
 ) error {
 
-	return r.store.CreateUserTradeTable(ctx)
+	return r.store.CreateUserFillsTable(ctx)
 }
 
-func (r *PostgresTradeRepository) DeleteUserTable(
+func (r *PostgresTradeRepository) DeleteUserFillsTable(
 	ctx context.Context,
 ) error {
 
-	return r.store.DeleteUserTable(ctx)
+	return r.store.DeleteUserFillsTable(ctx)
 }
 
-func (r *PostgresTradeRepository) GetLatestTradeTimestamp(
+func (r *PostgresTradeRepository) GetLatestFillTimestamp(
 	ctx context.Context,
 ) (time.Time, error) {
-	return r.store.GetLatestTradeTimestamp(ctx)
+	return r.store.GetLatestFillTimestamp(ctx)
 }

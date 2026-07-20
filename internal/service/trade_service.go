@@ -36,7 +36,7 @@ func (s *TradeService) FetchTrades(
 	ctx context.Context,
 	accountId int,
 ) error {
-	lastTradeTime, err := s.repo.GetLatestTradeTimestamp(ctx)
+	lastTradeTime, err := s.repo.GetLatestFillTimestamp(ctx)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func (s *TradeService) FetchTrades(
 	}
 
 	for _, trade := range trades {
-		if err := s.repo.SaveUserTrade(ctx, trade); err != nil {
+		if err := s.repo.SaveUserFill(ctx, trade); err != nil {
 			return err
 		}
 	}
