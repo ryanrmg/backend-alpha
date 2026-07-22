@@ -24,7 +24,7 @@ func NewPostgresTradeRepository(
 func (r *PostgresTradeRepository) GetTradesByAccount(
 	ctx context.Context,
 	accountId int,
-) ([]projectx.GatewayUserTrade, error) {
+) ([]UserTradesJournalEntry, error) {
 
 	return r.store.GetTradesByAccount(ctx, accountId)
 }

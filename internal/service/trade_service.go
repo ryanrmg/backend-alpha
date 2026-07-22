@@ -32,7 +32,7 @@ func NewTradeService(
 func (s *TradeService) GetTrades(
 	ctx context.Context,
 	accountId int,
-) ([]projectx.GatewayUserTrade, error) {
+) ([]repository.UserTradesJournalEntry, error) {
 
 	return s.repo.GetTradesByAccount(ctx, accountId)
 }

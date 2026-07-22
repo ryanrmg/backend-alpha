@@ -22,19 +22,23 @@ func NewDBStore(pool *pgxpool.Pool) *DBStore {
 }
 
 type UserTradesJournalEntry struct {
-	Id             int     `json:"id"`
-	AccountId      int     `json:"accountId"`
-	ContractId     string  `json:"contractId"`
-	EntryTimestamp string  `json:"entryTimestamp"`
-	ExitTimestamp  string  `json:"exitTimestamp"`
-	Price          float64 `json:"price"`
-	ProfitAndLoss  float64 `json:"profitAndLoss"`
-	Fees           float64 `json:"fees"`
-	Side           int     `json:"side"`
-	Size           int     `json:"size"`
-	Voided         bool    `json:"voided"`
-	OrderId        int     `json:"orderId"`
-	JournalNotes   string  `json:"journalNotes"`
+	TradeId    int    `json:"tradeId"`
+	AccountId  int    `json:"accountId"`
+	ContractId string `json:"contractId"`
+
+	EntryTimestamp string `json:"entryTimestamp"`
+	ExitTimestamp  string `json:"exitTimestamp"`
+
+	EntryPrice float64 `json:"entryPrice"`
+	ExitPrice  float64 `json:"exitPrice"`
+
+	EntrySize int `json:"entrySize"`
+	ExitSize  int `json:"exitSize"`
+
+	ProfitAndLoss float64 `json:"profitAndLoss"`
+	Fees          float64 `json:"fees"`
+
+	JournalNotes string `json:"journalNotes"`
 }
 
 // CreateUserFillsTable creates the cache table if it doesn't already exist
@@ -133,71 +137,100 @@ func (store *DBStore) GetLatestResponse(ctx context.Context, endpoint string) (s
 }
 
 // GetTradesByAccount retrieves all stored trades for a specific account ID ordered by newest first
-func (store *DBStore) GetTradesByAccount(ctx context.Context, accountId int) ([]projectx.GatewayUserTrade, error) {
-	// 1. Write the SQL query
+func (store *DBStore) GetTradesByAccount(
+	ctx context.Context,
+	accountId int,
+) ([]UserTradesJournalEntry, error) {
+
 	query := `
+		WITH ordered_fills AS (
+			SELECT
+				*,
+				ROW_NUMBER() OVER (
+					PARTITION BY trade_id
+					ORDER BY creation_timestamp ASC, id ASC
+				) AS entry_rank,
+				ROW_NUMBER() OVER (
+					PARTITION BY trade_id
+					ORDER BY creation_timestamp DESC, id DESC
+				) AS exit_rank
+			FROM user_fills
+			WHERE account_id = $1
+			  AND trade_id IS NOT NULL
+		),
+		trade_summary AS (
+			SELECT
+				trade_id,
+				account_id,
+				contract_id,
+
+				to_char(MIN(creation_timestamp), 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS entry_timestamp,
+				to_char(MAX(creation_timestamp), 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS exit_timestamp,
+
+				SUM(size) FILTER (WHERE entry_rank = 1) AS entry_size,
+				SUM(size) FILTER (WHERE exit_rank = 1) AS exit_size,
+
+				SUM(profit_and_loss) AS profit_and_loss,
+				SUM(fees) AS fees,
+
+				MAX(price) FILTER (WHERE entry_rank = 1) AS entry_price,
+				MAX(price) FILTER (WHERE exit_rank = 1) AS exit_price
+
+			FROM ordered_fills
+			GROUP BY
+				trade_id,
+				account_id,
+				contract_id
+		)
+
 		SELECT
-			id, account_id, contract_id, creation_timestamp,
-			price, profit_and_loss, fees, side, size, voided, order_id
-		FROM user_fills
-		WHERE account_id = $1
-		ORDER BY creation_timestamp DESC;
+			trade_id,
+			account_id,
+			contract_id,
+			entry_timestamp,
+			exit_timestamp,
+			entry_price,
+			exit_price,
+			entry_size,
+			exit_size,
+			profit_and_loss,
+			fees
+		FROM trade_summary
+		ORDER BY exit_timestamp DESC;
 	`
 
-	// 2. Execute the query
 	rows, err := store.pool.Query(ctx, query, accountId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, err
 	}
-	defer rows.Close() // Crucial to prevent connection leaks
+	defer rows.Close()
 
-	// 3. Create a slice to hold our results
-	var trades []projectx.GatewayUserTrade
+	var trades []UserTradesJournalEntry
 
-	// 4. Loop through the result rows
 	for rows.Next() {
-		var t projectx.GatewayUserTrade
-		var creationTime interface{} // To temporarily hold the timestamp object
+		var t UserTradesJournalEntry
 
-		// Scan the columns into the struct fields.
-		// The order here MUST exactly match the order in your SELECT statement.
 		err := rows.Scan(
-			&t.Id,
+			&t.TradeId,
 			&t.AccountId,
 			&t.ContractId,
-			&creationTime,
-			&t.Price,
+			&t.EntryTimestamp,
+			&t.ExitTimestamp,
+			&t.EntryPrice,
+			&t.ExitPrice,
+			&t.EntrySize,
+			&t.ExitSize,
 			&t.ProfitAndLoss,
 			&t.Fees,
-			&t.Side,
-			&t.Size,
-			&t.Voided,
-			&t.OrderId,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan row: %w", err)
+			return nil, err
 		}
 
-		// Convert the database timestamp into the string format your JSON expects
-		if tm, ok := creationTime.(string); ok {
-			t.CreationTimestamp = tm
-		} else if tm, ok := creationTime.(fmt.Stringer); ok {
-			t.CreationTimestamp = tm.String()
-		} else {
-			// Fallback string conversion depending on how your specific driver environment maps TIMESTAMPTZ
-			t.CreationTimestamp = fmt.Sprintf("%v", creationTime)
-		}
-
-		// Append the hydrated struct to our slice
 		trades = append(trades, t)
 	}
 
-	// 5. Check for errors encountered during iteration
-	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during row iteration: %w", err)
-	}
-
-	return trades, nil
+	return trades, rows.Err()
 }
 
 // GetLatestTradeTimestamp returns the newest trade timestamp in the database.

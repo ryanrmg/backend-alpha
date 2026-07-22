@@ -11,7 +11,7 @@ type TradeRepository interface {
 	GetTradesByAccount(
 		ctx context.Context,
 		accountId int,
-	) ([]projectx.GatewayUserTrade, error)
+	) ([]UserTradesJournalEntry, error)
 
 	GetLatestFill(
 		ctx context.Context,

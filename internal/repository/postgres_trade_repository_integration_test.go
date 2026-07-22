@@ -58,18 +58,33 @@ func TestPostgresTradeRepository_GetTradesByAccount(t *testing.T) {
 		Id:                1,
 		AccountId:         1234,
 		ContractId:        "CON.F.US.MES.U26",
-		CreationTimestamp: "2026-07-07T14:45:00Z",
+		CreationTimestamp: "2026-07-07T14:25:00Z",
 		Price:             6321.75,
-		ProfitAndLoss:     -42.75,
+		ProfitAndLoss:     0,
 		Fees:              2.04,
-		Side:              2,
+		Side:              0,
 		Size:              1,
 		Voided:            false,
 		OrderId:           1002,
 	}
 	var tradeId int64 = 1
-
 	err = repo.SaveUserFill(ctx, testTrade, &tradeId)
+	require.NoError(t, err)
+
+	testTrade2 := projectx.GatewayUserTrade{
+		Id:                2,
+		AccountId:         1234,
+		ContractId:        "CON.F.US.MES.U26",
+		CreationTimestamp: "2026-07-07T14:45:00Z",
+		Price:             6341.75,
+		ProfitAndLoss:     20.00,
+		Fees:              2.04,
+		Side:              1,
+		Size:              1,
+		Voided:            false,
+		OrderId:           1002,
+	}
+	err = repo.SaveUserFill(ctx, testTrade2, &tradeId)
 	require.NoError(t, err)
 
 	// Choose an account that exists in your test database.
@@ -85,8 +100,10 @@ func TestPostgresTradeRepository_GetTradesByAccount(t *testing.T) {
 	// Verify every returned trade belongs to the account.
 	for _, trade := range trades {
 		assert.Equal(t, accountID, trade.AccountId)
-		assert.Equal(t, testTrade.Price, trade.Price)
-		assert.NotZero(t, trade.Id)
+		assert.Equal(t, testTrade.Price, trade.EntryPrice)
+		assert.Equal(t, testTrade2.Price, trade.ExitPrice)
+		assert.Equal(t, testTrade2.ProfitAndLoss, trade.ProfitAndLoss)
+		assert.NotZero(t, trade.TradeId)
 		assert.NotEmpty(t, trade.ContractId)
 	}
 
