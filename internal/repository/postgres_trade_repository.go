@@ -32,9 +32,10 @@ func (r *PostgresTradeRepository) GetTradesByAccount(
 func (r *PostgresTradeRepository) SaveUserFill(
 	ctx context.Context,
 	trade projectx.GatewayUserTrade,
+	tradeId *int64,
 ) error {
 
-	return r.store.SaveUserFill(ctx, trade)
+	return r.store.SaveUserFill(ctx, trade, tradeId)
 }
 
 func (r *PostgresTradeRepository) CreateUserFillsTable(
@@ -51,8 +52,8 @@ func (r *PostgresTradeRepository) DeleteUserFillsTable(
 	return r.store.DeleteUserFillsTable(ctx)
 }
 
-func (r *PostgresTradeRepository) GetLatestFillTimestamp(
+func (r *PostgresTradeRepository) GetLatestFill(
 	ctx context.Context,
-) (time.Time, error) {
-	return r.store.GetLatestFillTimestamp(ctx)
+) (time.Time, *int64, error) {
+	return r.store.GetLatestFill(ctx)
 }

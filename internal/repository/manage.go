@@ -58,28 +58,6 @@ func (store *DBStore) CreateUserFillsTable(ctx context.Context) error {
 	return err
 }
 
-// CreateUserTradeTable creates the cache table if it doesn't already exist
-func (store *DBStore) CreateUserTradeTable(ctx context.Context) error {
-	query := `CREATE TABLE user_trades (
-	    id INT PRIMARY KEY,
-	    account_id INT NOT NULL,
-	    contract_id VARCHAR(50) NOT NULL,
-	    entry_timestamp TIMESTAMPTZ NOT NULL,  -- Best to parse string timestamps into real times
-	    exit_timestamp TIMESTAMPTZ,
-	    price NUMERIC(18, 8) NOT NULL,            -- Use NUMERIC/DECIMAL for financial accuracy
-	    profit_and_loss NUMERIC(18, 8) NOT NULL,
-	    fees NUMERIC(18, 8) NOT NULL,
-	    side INT NOT NULL,                        -- e.g., 1 for Buy, 2 for Sell
-	    size INT NOT NULL,
-	    voided BOOLEAN NOT NULL DEFAULT FALSE,
-	    order_id INT NOT NULL,
-	    journal_notes TEXT                        -- Added an extra column for your journaling!
-	);`
-
-	_, err := store.pool.Exec(ctx, query)
-	return err
-}
-
 // deletes the user table if it exists
 func (store *DBStore) DeleteUserFillsTable(ctx context.Context) error {
 	query := `DROP TABLE IF EXISTS user_fills;`
@@ -88,12 +66,12 @@ func (store *DBStore) DeleteUserFillsTable(ctx context.Context) error {
 }
 
 // SaveUserTrade inserts a cleanly structured trade into the DB
-func (store *DBStore) SaveUserFill(ctx context.Context, trade projectx.GatewayUserTrade) error {
+func (store *DBStore) SaveUserFill(ctx context.Context, trade projectx.GatewayUserTrade, tradeId *int64) error {
 	query := `
 	INSERT INTO user_fills (
 		id, account_id, contract_id, creation_timestamp, 
-		price, profit_and_loss, fees, side, size, voided, order_id
-	) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		price, profit_and_loss, fees, side, size, voided, order_id, trade_id
+	) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 	ON CONFLICT (id) DO NOTHING;` // Prevents crashes if the API sends duplicate logs
 
 	// Parse your string timestamp into a real Go time.Time object for Postgres
@@ -115,6 +93,7 @@ func (store *DBStore) SaveUserFill(ctx context.Context, trade projectx.GatewayUs
 		trade.Size,
 		trade.Voided,
 		trade.OrderId,
+		tradeId,
 	)
 
 	return err
@@ -223,28 +202,32 @@ func (store *DBStore) GetTradesByAccount(ctx context.Context, accountId int) ([]
 
 // GetLatestTradeTimestamp returns the newest trade timestamp in the database.
 // If there are no trades, it returns time.Time{} and nil.
-func (store *DBStore) GetLatestFillTimestamp(
+func (store *DBStore) GetLatestFill(
 	ctx context.Context,
-) (time.Time, error) {
+) (time.Time, *int64, error) {
 	query := `
-		SELECT MAX(creation_timestamp)
-		FROM user_fills;
+		SELECT creation_timestamp, trade_id
+		FROM user_fills
+		ORDER BY creation_timestamp DESC
+		LIMIT 1;
 	`
 
-	var latest *time.Time
+	var (
+		timestamp *time.Time
+		tradeID   *int64
+	)
 
-	err := store.pool.QueryRow(ctx, query).Scan(&latest)
+	err := store.pool.QueryRow(ctx, query).Scan(&timestamp, &tradeID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return time.Time{}, nil
+			return time.Time{}, nil, nil
 		}
-		return time.Time{}, fmt.Errorf("failed to get latest trade timestamp: %w", err)
+		return time.Time{}, nil, fmt.Errorf("failed to get latest fill: %w", err)
 	}
 
-	if latest == nil {
-		// Table exists but contains no rows.
-		return time.Time{}, nil
+	if timestamp == nil {
+		return time.Time{}, nil, nil
 	}
 
-	return *latest, nil
+	return *timestamp, tradeID, nil
 }

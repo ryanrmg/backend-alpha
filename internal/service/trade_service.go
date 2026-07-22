@@ -13,6 +13,11 @@ type TradeService struct {
 	client *projectx.ProjectXClient
 }
 
+type FillWithTradeId struct {
+	Trade   projectx.GatewayUserTrade
+	TradeId *int64
+}
+
 func NewTradeService(
 	repo repository.TradeRepository,
 	client *projectx.ProjectXClient,
@@ -36,7 +41,7 @@ func (s *TradeService) FetchTrades(
 	ctx context.Context,
 	accountId int,
 ) error {
-	lastTradeTime, err := s.repo.GetLatestFillTimestamp(ctx)
+	lastTradeTime, lastTradeId, err := s.repo.GetLatestFill(ctx)
 	if err != nil {
 		return err
 	}
@@ -58,10 +63,55 @@ func (s *TradeService) FetchTrades(
 		return err
 	}
 
-	for _, trade := range trades {
-		if err := s.repo.SaveUserFill(ctx, trade); err != nil {
+	fills := s.AssignTrade(trades, lastTradeId)
+
+	for _, fill := range fills {
+		if err := s.repo.SaveUserFill(ctx, fill.Trade, fill.TradeId); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (s *TradeService) AssignTrade(
+	trades []projectx.GatewayUserTrade,
+	lastTradeId *int64,
+) []FillWithTradeId {
+
+	fills := make([]FillWithTradeId, 0, len(trades))
+
+	var (
+		position       int
+		currentTradeId int64
+		nextTradeId    int64 = *lastTradeId
+	)
+
+	for _, trade := range trades {
+
+		// Opening a new position starts a new trade.
+		if position == 0 {
+			currentTradeId = nextTradeId
+			nextTradeId++
+		}
+
+		fills = append(fills, FillWithTradeId{
+			Trade:   trade,
+			TradeId: &currentTradeId,
+		})
+
+		// Update running position.
+		if trade.Side == 0 {
+			position += trade.Size
+		} else {
+			position -= trade.Size
+		}
+
+		// If position returns to zero, the next opening fill
+		// will start a new trade.
+		if position == 0 {
+			currentTradeId = 0
+		}
+	}
+
+	return fills
 }

@@ -13,12 +13,13 @@ type TradeRepository interface {
 		accountId int,
 	) ([]projectx.GatewayUserTrade, error)
 
-	GetLatestFillTimestamp(
+	GetLatestFill(
 		ctx context.Context,
-	) (time.Time, error)
+	) (time.Time, *int64, error)
 
 	SaveUserFill(
 		ctx context.Context,
 		trade projectx.GatewayUserTrade,
+		tradeId *int64,
 	) error
 }

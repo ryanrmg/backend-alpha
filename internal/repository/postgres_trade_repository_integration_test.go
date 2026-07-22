@@ -67,8 +67,9 @@ func TestPostgresTradeRepository_GetTradesByAccount(t *testing.T) {
 		Voided:            false,
 		OrderId:           1002,
 	}
+	var tradeId int64 = 1
 
-	err = repo.SaveUserFill(ctx, testTrade)
+	err = repo.SaveUserFill(ctx, testTrade, &tradeId)
 	require.NoError(t, err)
 
 	// Choose an account that exists in your test database.
