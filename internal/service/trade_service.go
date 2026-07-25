@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ryanrmg/backend-alpha/internal/repository"
@@ -114,4 +115,44 @@ func (s *TradeService) AssignTrade(
 	}
 
 	return fills
+}
+
+func (s *TradeService) RebuildTradeIds(ctx context.Context) error {
+	if err := s.repo.ClearTradeIds(ctx); err != nil {
+		return err
+	}
+
+	fills, err := s.repo.GetAllFillsOrdered(ctx)
+	if err != nil {
+		return err
+	}
+
+	var (
+		tradeId        int64 = 1
+		currentTradeId int64
+		position       = 0
+	)
+
+	for _, fill := range fills {
+		if position == 0 {
+			currentTradeId = tradeId
+			tradeId++
+		}
+
+		if err := s.repo.UpdateTradeId(ctx, fill.Id, currentTradeId); err != nil {
+			return err
+		}
+
+		if fill.Side == 0 {
+			position += fill.Size
+		} else {
+			position -= fill.Size
+		}
+	}
+
+	if position != 0 {
+		return fmt.Errorf("rebuild finished with open position of %d contracts", position)
+	}
+
+	return nil
 }

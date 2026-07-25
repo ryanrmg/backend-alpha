@@ -22,4 +22,18 @@ type TradeRepository interface {
 		trade projectx.GatewayUserTrade,
 		tradeId *int64,
 	) error
+
+	ClearTradeIds(
+		ctx context.Context,
+	) error
+
+	GetAllFillsOrdered(
+		ctx context.Context,
+	) ([]projectx.GatewayUserTrade, error)
+
+	UpdateTradeId(
+		ctx context.Context,
+		fillId int,
+		tradeId int64,
+	) error
 }

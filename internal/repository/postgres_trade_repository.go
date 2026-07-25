@@ -57,3 +57,23 @@ func (r *PostgresTradeRepository) GetLatestFill(
 ) (time.Time, *int64, error) {
 	return r.store.GetLatestFill(ctx)
 }
+
+func (r *PostgresTradeRepository) ClearTradeIds(
+	ctx context.Context,
+) error {
+	return r.store.ClearTradeIds(ctx)
+}
+
+func (r *PostgresTradeRepository) GetAllFillsOrdered(
+	ctx context.Context,
+) ([]projectx.GatewayUserTrade, error) {
+	return r.store.GetAllFillsOrdered(ctx)
+}
+
+func (r *PostgresTradeRepository) UpdateTradeId(
+	ctx context.Context,
+	fillId int,
+	tradeId int64,
+) error {
+	return r.store.UpdateTradeId(ctx, fillId, tradeId)
+}

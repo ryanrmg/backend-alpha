@@ -264,3 +264,97 @@ func (store *DBStore) GetLatestFill(
 
 	return *timestamp, tradeID, nil
 }
+
+func (store *DBStore) ClearTradeIds(ctx context.Context) error {
+	query := `
+		UPDATE user_fills
+		SET trade_id = NULL;
+	`
+
+	_, err := store.pool.Exec(ctx, query)
+	if err != nil {
+		return fmt.Errorf("failed to clear trade IDs: %w", err)
+	}
+
+	return nil
+}
+
+func (store *DBStore) GetAllFillsOrdered(ctx context.Context) ([]projectx.GatewayUserTrade, error) {
+	query := `
+		SELECT
+			id,
+			account_id,
+			contract_id,
+			creation_timestamp,
+			price,
+			profit_and_loss,
+			fees,
+			side,
+			size,
+			voided,
+			order_id
+		FROM user_fills
+		ORDER BY
+			creation_timestamp ASC,
+			id ASC;
+	`
+
+	rows, err := store.pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query fills: %w", err)
+	}
+	defer rows.Close()
+
+	var fills []projectx.GatewayUserTrade
+
+	for rows.Next() {
+		var fill projectx.GatewayUserTrade
+		var creationTime time.Time
+
+		err := rows.Scan(
+			&fill.Id,
+			&fill.AccountId,
+			&fill.ContractId,
+			&creationTime,
+			&fill.Price,
+			&fill.ProfitAndLoss,
+			&fill.Fees,
+			&fill.Side,
+			&fill.Size,
+			&fill.Voided,
+			&fill.OrderId,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan fill: %w", err)
+		}
+
+		fill.CreationTimestamp = creationTime.UTC().Format(time.RFC3339)
+
+		fills = append(fills, fill)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed iterating fills: %w", err)
+	}
+
+	return fills, nil
+}
+
+func (store *DBStore) UpdateTradeId(
+	ctx context.Context,
+	fillId int,
+	tradeId int64,
+) error {
+	query := `
+		UPDATE user_fills
+		SET trade_id = $2
+		WHERE id = $1;
+	`
+
+	_, err := store.pool.Exec(ctx, query, fillId, tradeId)
+	if err != nil {
+		return fmt.Errorf("failed to update trade ID for fill %d: %w", fillId, err)
+	}
+
+	return nil
+}

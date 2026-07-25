@@ -46,6 +46,11 @@ func (h *TradeHandler) GetTrades(
 		log.Printf("Failed to get trades from remote", err)
 	}
 
+	err = h.service.RebuildTradeIds(r.Context())
+	if err != nil {
+		log.Printf("Failed to rebuild trade ids", err)
+	}
+
 	trades, err := h.service.GetTrades(
 		r.Context(),
 		accountId,
