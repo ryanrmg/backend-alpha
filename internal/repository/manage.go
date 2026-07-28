@@ -21,26 +21,6 @@ func NewDBStore(pool *pgxpool.Pool) *DBStore {
 	return &DBStore{pool: pool}
 }
 
-type UserTradesJournalEntry struct {
-	TradeId    int    `json:"tradeId"`
-	AccountId  int    `json:"accountId"`
-	ContractId string `json:"contractId"`
-
-	EntryTimestamp string `json:"entryTimestamp"`
-	ExitTimestamp  string `json:"exitTimestamp"`
-
-	EntryPrice float64 `json:"entryPrice"`
-	ExitPrice  float64 `json:"exitPrice"`
-
-	EntrySize int `json:"entrySize"`
-	ExitSize  int `json:"exitSize"`
-
-	ProfitAndLoss float64 `json:"profitAndLoss"`
-	Fees          float64 `json:"fees"`
-
-	JournalNotes string `json:"journalNotes"`
-}
-
 // CreateUserFillsTable creates the cache table if it doesn't already exist
 func (store *DBStore) CreateUserFillsTable(ctx context.Context) error {
 	query := `CREATE TABLE user_fills (
@@ -60,6 +40,26 @@ func (store *DBStore) CreateUserFillsTable(ctx context.Context) error {
 
 	_, err := store.pool.Exec(ctx, query)
 	return err
+}
+
+func (store *DBStore) CreateCandleTable(ctx context.Context) error {
+	query := `CREATE TABLE candles (
+	    contract_id VARCHAR(50) NOT NULL,
+	    timeframe VARCHAR(10) NOT NULL,
+	    timestamp TIMESTAMPTZ NOT NULL,
+
+	    open NUMERIC(18,8) NOT NULL,
+	    high NUMERIC(18,8) NOT NULL,
+	    low NUMERIC(18,8) NOT NULL,
+	    close NUMERIC(18,8) NOT NULL,
+	    volume BIGINT NOT NULL,
+
+	    PRIMARY KEY (
+	        contract_id,
+	        timeframe,
+	        timestamp
+	    )
+	);`
 }
 
 // deletes the user table if it exists
@@ -357,4 +357,130 @@ func (store *DBStore) UpdateTradeId(
 	}
 
 	return nil
+}
+
+func (r *PostgresCandleRepository) GetCandles(
+	ctx context.Context,
+	contractID string,
+	timeframe string,
+	start time.Time,
+	end time.Time,
+) ([]Candle, error) {
+
+	const query = `
+        SELECT
+            contract_id,
+            timeframe,
+            timestamp,
+            open,
+            high,
+            low,
+            close,
+            volume
+        FROM candles
+        WHERE contract_id = $1
+          AND timeframe = $2
+          AND timestamp >= $3
+          AND timestamp < $4
+        ORDER BY timestamp ASC
+    `
+
+	rows, err := r.pool.Query(
+		ctx,
+		query,
+		contractID,
+		timeframe,
+		start,
+		end,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var candles []Candle
+
+	for rows.Next() {
+		var candle Candle
+
+		if err := rows.Scan(
+			&candle.ContractID,
+			&candle.Timeframe,
+			&candle.Timestamp,
+			&candle.Open,
+			&candle.High,
+			&candle.Low,
+			&candle.Close,
+			&candle.Volume,
+		); err != nil {
+			return nil, err
+		}
+
+		candles = append(candles, candle)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return candles, nil
+}
+
+func (r *PostgresCandleRepository) SaveCandles(
+	ctx context.Context,
+	candles []domain.Candle,
+) error {
+
+	const query = `
+        INSERT INTO candles (
+            contract_id,
+            timeframe,
+            timestamp,
+            open,
+            high,
+            low,
+            close,
+            volume
+        )
+        VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8
+        )
+        ON CONFLICT (
+            contract_id,
+            timeframe,
+            timestamp
+        )
+        DO UPDATE SET
+            open = EXCLUDED.open,
+            high = EXCLUDED.high,
+            low = EXCLUDED.low,
+            close = EXCLUDED.close,
+            volume = EXCLUDED.volume
+    `
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	for _, candle := range candles {
+		_, err := tx.Exec(
+			ctx,
+			query,
+			candle.ContractID,
+			candle.Timeframe,
+			candle.Timestamp,
+			candle.Open,
+			candle.High,
+			candle.Low,
+			candle.Close,
+			candle.Volume,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
 }

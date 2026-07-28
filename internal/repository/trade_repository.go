@@ -7,6 +7,26 @@ import (
 	projectx "github.com/ryanrmg/projectx-api"
 )
 
+type UserTradesJournalEntry struct {
+	TradeId    int    `json:"tradeId"`
+	AccountId  int    `json:"accountId"`
+	ContractId string `json:"contractId"`
+
+	EntryTimestamp string `json:"entryTimestamp"`
+	ExitTimestamp  string `json:"exitTimestamp"`
+
+	EntryPrice float64 `json:"entryPrice"`
+	ExitPrice  float64 `json:"exitPrice"`
+
+	EntrySize int `json:"entrySize"`
+	ExitSize  int `json:"exitSize"`
+
+	ProfitAndLoss float64 `json:"profitAndLoss"`
+	Fees          float64 `json:"fees"`
+
+	JournalNotes string `json:"journalNotes"`
+}
+
 type TradeRepository interface {
 	GetTradesByAccount(
 		ctx context.Context,

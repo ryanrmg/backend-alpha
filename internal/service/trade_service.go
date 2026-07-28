@@ -55,7 +55,7 @@ func (s *TradeService) FetchTrades(
 
 	req := projectx.TradeSearchRequest{
 		AccountId:      accountId,
-		StartTimestamp: startTime.UTC().Format(time.RFC3339),
+		StartTimestamp: startTime.AddDate(0, 0, -2).UTC().Format(time.RFC3339), // check 2 days before it in case anything was missed
 		EndTimestamp:   time.Now().UTC().Format(time.RFC3339),
 	}
 
