@@ -1,7 +1,12 @@
 package repository
 
+import (
+	"context"
+	"time"
+)
+
 type Candle struct {
-	ContractID string
+	ContractId string
 	Timeframe  string
 
 	Timestamp time.Time
@@ -16,7 +21,7 @@ type Candle struct {
 type CandleRepository interface {
 	GetCandles(
 		ctx context.Context,
-		contractID string,
+		contractId string,
 		timeframe string,
 		start time.Time,
 		end time.Time,
@@ -29,7 +34,7 @@ type CandleRepository interface {
 
 	GetLatestCandle(
 		ctx context.Context,
-		contractID string,
+		contractId string,
 		timeframe string,
 	) (*Candle, error)
 }

@@ -104,37 +104,37 @@ func (store *DBStore) SaveUserFill(ctx context.Context, trade projectx.GatewayUs
 }
 
 // DeleteResponsesOlderThan deletes cached records older than a specific duration
-func (store *DBStore) DeleteResponsesOlderThan(ctx context.Context, duration time.Duration) (int64, error) {
-	query := `DELETE FROM user_fills WHERE fetched_at < $1;`
+// func (store *DBStore) DeleteResponsesOlderThan(ctx context.Context, duration time.Duration) (int64, error) {
+// 	query := `DELETE FROM user_fills WHERE fetched_at < $1;`
 
-	cutoff := time.Now().Add(-duration)
-	result, err := store.pool.Exec(ctx, query, cutoff)
-	if err != nil {
-		return 0, err
-	}
+// 	cutoff := time.Now().Add(-duration)
+// 	result, err := store.pool.Exec(ctx, query, cutoff)
+// 	if err != nil {
+// 		return 0, err
+// 	}
 
-	return result.RowsAffected(), nil
-}
+// 	return result.RowsAffected(), nil
+// }
 
 // GetLatestResponse retrieves the newest cached JSON string for a given endpoint
-func (store *DBStore) GetLatestResponse(ctx context.Context, endpoint string) (string, time.Time, error) {
-	query := `
-	SELECT response_json, fetched_at 
-	FROM user_fills 
-	WHERE endpoint = $1 
-	ORDER BY fetched_at DESC 
-	LIMIT 1;`
+// func (store *DBStore) GetLatestResponse(ctx context.Context, endpoint string) (string, time.Time, error) {
+// 	query := `
+// 		SELECT response_json, fetched_at
+// 		FROM user_fills
+// 		WHERE endpoint = $1
+// 		ORDER BY fetched_at DESC
+// 		LIMIT 1;`
 
-	var responseJSON string
-	var fetchedAt time.Time
+// 	var responseJSON string
+// 	var fetchedAt time.Time
 
-	err := store.pool.QueryRow(ctx, query, endpoint).Scan(&responseJSON, &fetchedAt)
-	if err != nil {
-		return "", time.Time{}, err // Will return pgx.ErrNoRows if empty
-	}
+// 	err := store.pool.QueryRow(ctx, query, endpoint).Scan(&responseJSON, &fetchedAt)
+// 	if err != nil {
+// 		return "", time.Time{}, err // Will return pgx.ErrNoRows if empty
+// 	}
 
-	return responseJSON, fetchedAt, nil
-}
+// 	return responseJSON, fetchedAt, nil
+// }
 
 // GetTradesByAccount retrieves all stored trades for a specific account ID ordered by newest first
 func (store *DBStore) GetTradesByAccount(
@@ -263,6 +263,31 @@ func (store *DBStore) GetLatestFill(
 	}
 
 	return *timestamp, tradeID, nil
+}
+
+func (store *DBStore) GetLatestCandle(ctx context.Context, endpoint, contractId string) (time.Time, error) {
+	query := `
+		SELECT timestamp
+		FROM candles
+		WHERE contract_id = $1
+		ORDER BY timestamp DESC
+		LIMIT 1;
+	`
+	var timestamp *time.Time
+
+	err := store.pool.QueryRow(ctx, query, contractId).Scan(&timestamp)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return time.Time{}, nil
+		}
+		return time.Time{}, fmt.Errorf("failed to get latest candle: %w", err)
+	}
+
+	if timestamp == nil {
+		return time.Time{}, nil
+	}
+
+	return *timestamp, nil
 }
 
 func (store *DBStore) ClearTradeIds(ctx context.Context) error {
@@ -428,7 +453,7 @@ func (r *PostgresCandleRepository) GetCandles(
 
 func (r *PostgresCandleRepository) SaveCandles(
 	ctx context.Context,
-	candles []domain.Candle,
+	candles []Candle,
 ) error {
 
 	const query = `
