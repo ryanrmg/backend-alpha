@@ -35,6 +35,5 @@ type CandleRepository interface {
 	GetLatestCandle(
 		ctx context.Context,
 		contractId string,
-		timeframe string,
-	) (*Candle, error)
+	) (time.Time, error)
 }

@@ -60,6 +60,9 @@ func (store *DBStore) CreateCandleTable(ctx context.Context) error {
 	        timestamp
 	    )
 	);`
+
+	_, err := store.pool.Exec(ctx, query)
+	return err
 }
 
 // deletes the user table if it exists
@@ -103,38 +106,7 @@ func (store *DBStore) SaveUserFill(ctx context.Context, trade projectx.GatewayUs
 	return err
 }
 
-// DeleteResponsesOlderThan deletes cached records older than a specific duration
-// func (store *DBStore) DeleteResponsesOlderThan(ctx context.Context, duration time.Duration) (int64, error) {
-// 	query := `DELETE FROM user_fills WHERE fetched_at < $1;`
 
-// 	cutoff := time.Now().Add(-duration)
-// 	result, err := store.pool.Exec(ctx, query, cutoff)
-// 	if err != nil {
-// 		return 0, err
-// 	}
-
-// 	return result.RowsAffected(), nil
-// }
-
-// GetLatestResponse retrieves the newest cached JSON string for a given endpoint
-// func (store *DBStore) GetLatestResponse(ctx context.Context, endpoint string) (string, time.Time, error) {
-// 	query := `
-// 		SELECT response_json, fetched_at
-// 		FROM user_fills
-// 		WHERE endpoint = $1
-// 		ORDER BY fetched_at DESC
-// 		LIMIT 1;`
-
-// 	var responseJSON string
-// 	var fetchedAt time.Time
-
-// 	err := store.pool.QueryRow(ctx, query, endpoint).Scan(&responseJSON, &fetchedAt)
-// 	if err != nil {
-// 		return "", time.Time{}, err // Will return pgx.ErrNoRows if empty
-// 	}
-
-// 	return responseJSON, fetchedAt, nil
-// }
 
 // GetTradesByAccount retrieves all stored trades for a specific account ID ordered by newest first
 func (store *DBStore) GetTradesByAccount(
@@ -265,7 +237,7 @@ func (store *DBStore) GetLatestFill(
 	return *timestamp, tradeID, nil
 }
 
-func (store *DBStore) GetLatestCandle(ctx context.Context, endpoint, contractId string) (time.Time, error) {
+func (store *DBStore) GetLatestCandle(ctx context.Context, contractId string) (time.Time, error) {
 	query := `
 		SELECT timestamp
 		FROM candles
@@ -384,9 +356,9 @@ func (store *DBStore) UpdateTradeId(
 	return nil
 }
 
-func (r *PostgresCandleRepository) GetCandles(
+func (store *DBStore) GetCandles(
 	ctx context.Context,
-	contractID string,
+	contractId string,
 	timeframe string,
 	start time.Time,
 	end time.Time,
@@ -410,10 +382,10 @@ func (r *PostgresCandleRepository) GetCandles(
         ORDER BY timestamp ASC
     `
 
-	rows, err := r.pool.Query(
+	rows, err := store.pool.Query(
 		ctx,
 		query,
-		contractID,
+		contractId,
 		timeframe,
 		start,
 		end,
@@ -429,7 +401,7 @@ func (r *PostgresCandleRepository) GetCandles(
 		var candle Candle
 
 		if err := rows.Scan(
-			&candle.ContractID,
+			&candle.ContractId,
 			&candle.Timeframe,
 			&candle.Timestamp,
 			&candle.Open,
@@ -451,7 +423,7 @@ func (r *PostgresCandleRepository) GetCandles(
 	return candles, nil
 }
 
-func (r *PostgresCandleRepository) SaveCandles(
+func (store *DBStore) SaveCandles(
 	ctx context.Context,
 	candles []Candle,
 ) error {
@@ -483,7 +455,7 @@ func (r *PostgresCandleRepository) SaveCandles(
             volume = EXCLUDED.volume
     `
 
-	tx, err := r.pool.Begin(ctx)
+	tx, err := store.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -493,7 +465,7 @@ func (r *PostgresCandleRepository) SaveCandles(
 		_, err := tx.Exec(
 			ctx,
 			query,
-			candle.ContractID,
+			candle.ContractId,
 			candle.Timeframe,
 			candle.Timestamp,
 			candle.Open,

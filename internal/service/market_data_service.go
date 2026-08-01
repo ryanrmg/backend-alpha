@@ -1,8 +1,17 @@
 package service
 
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/ryanrmg/backend-alpha/internal/repository"
+	projectx "github.com/ryanrmg/projectx-api"
+)
+
 type MarketDataService struct {
-	repo   CandleRepository
-	client ProjectXClient
+	repo   repository.CandleRepository
+	client projectx.ProjectXClient
 }
 
 func (s *MarketDataService) GetCandles(
@@ -11,15 +20,15 @@ func (s *MarketDataService) GetCandles(
 	timeframe string,
 	start time.Time,
 	end time.Time,
-) ([]Candle, error) {
-
+) ([]repository.Candle, error) {
+	return s.repo.GetCandles(ctx, contractId, timeframe, start, end)
 }
 
 func (s *MarketDataService) FetchCandles(
 	ctx context.Context,
 	contractId string,
 ) error {
-	lastCandleTime, err := s.repo.GetLatestCandle(ctx)
+	lastCandleTime, err := s.repo.GetLatestCandle(ctx, contractId)
 	if err != nil {
 		return err
 	}
@@ -41,20 +50,33 @@ func (s *MarketDataService) FetchCandles(
 		IncludePartialBar: false,
 	}
 
-	candles, err := s.client.Market.History(ctx, req)
+	bars, err := s.client.Markets.History(ctx, req)
 	if err != nil {
-		return err
+	    return err
 	}
 
-	err = s.repo.SaveCandles(candles)
-	if err != nil {
-		return err
+	candles := make([]repository.Candle, 0, len(bars))
+	for _, bar := range bars {
+	    ts, err := time.Parse(time.RFC3339, bar.Timestamp)
+	    if err != nil {
+	        return fmt.Errorf("invalid candle timestamp %q: %w", bar.Timestamp, err)
+	    }
+
+	    candles = append(candles, repository.Candle{
+	        ContractId: contractId,
+	        Timestamp:  ts,
+	        Open:       bar.Open,
+	        High:       bar.High,
+	        Low:        bar.Low,
+	        Close:      bar.Close,
+	        Volume:     bar.Volume,
+	    })
 	}
 
-	for _, fill := range fills {
-		if err := s.repo.SaveUserFill(ctx, fill.Trade, fill.TradeId); err != nil {
-			return err
-		}
+	if err := s.repo.SaveCandles(ctx, candles); err != nil {
+	    return err
 	}
+
+
 	return nil
 }
